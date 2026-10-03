@@ -47,3 +47,6 @@ env.sh
 # AI Tooling
 .claude/
 .sourcerer/
+
+# 词典源数据（66MB，用 scripts/build_dict_json.py 生成 ecdict-mini.json）
+data/

@@ -1,8 +1,14 @@
 import "src/ui/obsidian-ui-components/content-container/card-container/card-container.css";
 import moment from "moment";
-import { App, Platform } from "obsidian";
+import { App, Platform, setIcon } from "obsidian";
 
 import { CardType } from "src/data/data-structures/card/questions/question";
+import {
+    buildQuiz,
+    isAnswerCorrect,
+    QuizQuestion,
+    stripAnswerHints,
+} from "src/data/dictionary/vocab-quiz";
 import { SRSettings } from "src/data/settings";
 import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
@@ -19,6 +25,7 @@ import {
 import { ConfirmationModal } from "src/ui/obsidian-ui-components/modals/confirmation-modal";
 import { escapeHtml } from "src/utils/escape-html";
 import EmulatedPlatform from "src/utils/platform-detector";
+import { pronounce } from "src/utils/pronounce";
 import { RenderMarkdownWrapper } from "src/utils/renderers";
 
 // TODO: Refactor cloze rendering into the renderers file
@@ -26,6 +33,7 @@ export class CardContainer {
     private app: App;
     private plugin: SRPlugin;
     private cardState: CardState;
+    private minimal: boolean;
 
     private view: HTMLDivElement;
 
@@ -41,6 +49,9 @@ export class CardContainer {
 
     private clozeInputs: NodeListOf<HTMLInputElement> | null = null;
     private clozeAnswers: NodeListOf<Element> | null = null;
+
+    // 正面答题结果，用于在背面顶部显示对错
+    private quizResult: { correct: boolean; answer: string } | null = null;
 
     private processReviewHandler: (response: ReviewResponse) => Promise<void>;
     private skipCardHandler: () => void;
@@ -61,11 +72,13 @@ export class CardContainer {
         jumpToCurrentCardHandler: () => Promise<void>,
         displayCurrentCardInfoNoticeHandler: () => void,
         closeModal?: () => void,
+        minimal: boolean = false,
     ) {
         // Init properties
         this.app = app;
         this.plugin = plugin;
         this.cardState = CardState.Closed;
+        this.minimal = minimal;
         this.processReviewHandler = processReviewHandler;
         this.skipCardHandler = skipCardHandler;
         this.showAnswerHandler = showAnswerHandler;
@@ -98,6 +111,7 @@ export class CardContainer {
                 ).open();
             },
             closeModal,
+            minimal,
         );
 
         this.scrollWrapper = this.view.createDiv();
@@ -189,17 +203,23 @@ export class CardContainer {
     }
 
     private drawCardContext(sessionData: SessionData, settings: SRSettings) {
-        if (settings.showContextInCards) {
-            this.contextSection = new ContextSectionComponent(this.content);
-            this.contextSection.updateCardContext(
-                settings.showContextInCards,
-                sessionData.currentQuestion,
-                sessionData.currentNote,
-            );
+        // 精简模式（复习侧栏）下不显示笔记标题，避免拼卡时透露答案
+        if (this.minimal || !settings.showContextInCards) {
+            return;
         }
+        this.contextSection = new ContextSectionComponent(this.content);
+        this.contextSection.updateCardContext(
+            settings.showContextInCards,
+            sessionData.currentQuestion,
+            sessionData.currentNote,
+        );
     }
 
-    private async drawCardFrontContent(sessionData: SessionData, settings: SRSettings) {
+    private async drawCardFrontContent(
+        sessionData: SessionData,
+        settings: SRSettings,
+        isFront = true,
+    ) {
         // Update card content
         this.content.empty();
 
@@ -213,14 +233,138 @@ export class CardContainer {
             sessionData.currentNote.filePath,
         );
 
+        const card = sessionData.cardData.currentCard;
+        const front = card.front.trim();
+        const back = card.back.trim();
+
+        // 拼卡的正面不能带音标/词形/例句，否则等于给出答案
+        const frontText = isFront ? stripAnswerHints(front, back) : card.front.trimStart();
+
+        // 中文正面（拼卡：看中文输英文）用正常字号，不用 2em 粗体大字
+        this.content.toggleClass("sr-content-zh", /[\u4e00-\u9fff]/.test(frontText));
+
         await wrapper.renderMarkdownWrapper(
-            sessionData.cardData.currentCard.front.trimStart(),
+            frontText,
             this.content,
             sessionData.currentQuestion.questionText.textDirection,
             // sessionData.cardData.currentCardState
         );
+
+        if (isFront) {
+            // 正面：答题区（Anki 式的选择题 / 打字题）
+            this.renderQuiz(front, back);
+
+            // 正面：单词发音按钮
+            this.addPronounceButton(this.pickSpeakable(front, back));
+
+            // 正面显示可折叠的提示（内容取自背面的例句）
+            const hintText = this.extractHint(card.back);
+            if (hintText) {
+                const details = this.content.createEl("details", { cls: "sr-card-hint" });
+                details.createEl("summary", { text: t("HINT") });
+                details.createEl("div", { text: hintText });
+            }
+        }
+
         // Set scroll position back to top
         this.content.scrollTop = 0;
+    }
+
+    // 正面的答题区。非词汇卡不会生成题目，正常走自评流程。
+    private renderQuiz(front: string, back: string): void {
+        const question = buildQuiz(front, back, this.plugin.dictionary);
+        if (question === null) return;
+
+        this.quizResult = null;
+
+        const wrap = this.content.createDiv("sr-quiz");
+
+        if (question.kind === "choice") {
+            const optionsEl = wrap.createDiv("sr-quiz-options");
+            for (const option of question.options ?? []) {
+                const button = optionsEl.createEl("button", {
+                    cls: "sr-quiz-option",
+                    text: option,
+                });
+                button.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    this.submitQuiz(question, option, wrap);
+                });
+            }
+        } else {
+            const input = wrap.createEl("input", {
+                cls: "sr-quiz-input",
+                type: "text",
+                attr: { placeholder: t("QUIZ_TYPE_INPUT") },
+            });
+            input.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                event.stopPropagation();
+                this.submitQuiz(question, input.value, wrap);
+            });
+            input.focus();
+        }
+    }
+
+    private submitQuiz(question: QuizQuestion, input: string, wrap: HTMLElement): void {
+        const correct = isAnswerCorrect(input, question.answer);
+        this.quizResult = { correct, answer: question.answer };
+
+        wrap.addClass(correct ? "sr-quiz-correct" : "sr-quiz-wrong");
+        wrap.querySelectorAll("button.sr-quiz-option").forEach((el) => {
+            el.setAttribute("disabled", "true");
+            if (el.textContent === question.answer) {
+                el.classList.add("sr-quiz-option-answer");
+            }
+        });
+        wrap.querySelectorAll("input.sr-quiz-input").forEach((el) => {
+            el.setAttribute("disabled", "true");
+        });
+
+        // 让用户先看到对错，再自动翻面
+        window.setTimeout(() => this.showAnswerHandler(), 650);
+    }
+
+    // 卡片上该朗读的英文单词（认卡在正面，拼卡在背面）
+    private pickSpeakable(front: string, back: string): string {
+        const pattern = /^[A-Za-z][A-Za-z\s'’-]{0,59}$/;
+        if (pattern.test(front)) return front;
+        if (pattern.test(back)) return back;
+        return "";
+    }
+
+    // 正面加一个发音按钮（仅当正面看起来是一个英文单词/短语时）
+    private addPronounceButton(text: string): void {
+        if (!/^[A-Za-z][A-Za-z\s'’-]{0,59}$/.test(text)) return;
+
+        const button = this.content.createEl("button", {
+            cls: "sr-pronounce-button",
+            attr: { "aria-label": t("PRONOUNCE") },
+        });
+        setIcon(button, "volume-2");
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            pronounce(text);
+        });
+    }
+
+    // 从背面提取提示：优先 "**例句：** xxx"，其次第一条 "> " 引用行
+    private extractHint(back: string): string | null {
+        const lines = back.split("\n");
+        for (const line of lines) {
+            const text = line.trim();
+            if (text.startsWith("**例句")) {
+                return text.replace(/^\*\*例句[：:]\*\*\s*/, "").trim();
+            }
+        }
+        for (const line of lines) {
+            const text = line.trim();
+            if (text.startsWith("> ")) {
+                return text.slice(2).trim();
+            }
+        }
+        return null;
     }
 
     public drawPendingState(nextPendingDueUnix: number): void {
@@ -350,7 +494,25 @@ export class CardContainer {
 
         // Show answer text
         if (sessionData.currentQuestion.questionType !== CardType.Cloze) {
-            await this.drawCardFrontContent(sessionData, settings);
+            await this.drawCardFrontContent(sessionData, settings, false);
+
+            // 答题结果（如果刚才答过题）
+            if (this.quizResult !== null) {
+                const result = this.quizResult;
+                this.quizResult = null;
+
+                const banner = this.content.createDiv({
+                    cls: `sr-quiz-result ${
+                        result.correct ? "sr-quiz-result-correct" : "sr-quiz-result-wrong"
+                    }`,
+                });
+                banner.setText(
+                    result.correct
+                        ? t("QUIZ_CORRECT")
+                        : t("QUIZ_WRONG", { answer: result.answer }),
+                );
+            }
+
             const hr: HTMLElement = activeDocument.createElement("hr");
             this.content.appendChild(hr);
         } else {
@@ -460,7 +622,7 @@ export class CardContainer {
                 if (this.cardState !== CardState.Back) {
                     break;
                 }
-                void this.processReviewHandler(ReviewResponse.Reset);
+                void this.processReviewHandler(ReviewResponse.Again);
                 consumeKeyEvent();
                 break;
             default:

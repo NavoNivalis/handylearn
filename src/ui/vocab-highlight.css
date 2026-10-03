@@ -1,0 +1,12 @@
+/* MARK: Reading-view highlight for words that already have a card */
+
+.sr-known-word {
+    background-color: color-mix(in srgb, var(--color-yellow) 30%, transparent);
+    border-radius: 3px;
+    padding: 0 2px;
+    cursor: pointer;
+}
+
+.sr-known-word:hover {
+    background-color: color-mix(in srgb, var(--color-yellow) 55%, transparent);
+}

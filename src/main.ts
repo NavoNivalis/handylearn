@@ -3,20 +3,34 @@ import { Plugin } from "obsidian";
 import { CommandManager } from "src/command-manager";
 import { DataManager } from "src/data/data-manager";
 import { DebugLoggerInstance } from "src/data/debug-logger";
+import { Ecdict } from "src/data/dictionary/ecdict";
 import { PluginDataError, PluginDataManager } from "src/data/plugin-data-manager";
 import { SRSettings } from "src/data/settings";
 import { SettingsManager } from "src/data/settings-manager";
+import { GroupManager } from "src/data/study/group-manager";
+import { StudyPlanStore } from "src/data/study/study-plan";
+import { t } from "src/lang/helpers";
 import { LocaleManagerInstance } from "src/lang/locale-manager";
 import { NextNoteReviewHandler } from "src/note/next-note-review-handler";
 import { NoteReviewQueue } from "src/note/note-review-queue";
 import { ReminderManager } from "src/scheduling/reminder-manager";
 import { REVIEW_QUEUE_VIEW_TYPE } from "src/ui/obsidian-ui-components/item-views/review-queue-list-view";
+import { CreateVocabCardModal } from "src/ui/obsidian-ui-components/modals/create-vocab-card-modal";
+import { ExtractWordsModal } from "src/ui/obsidian-ui-components/modals/extract-words-modal";
 import { UIManager } from "src/ui/ui-manager";
+import { VocabHighlighter } from "src/ui/vocab-highlight";
+import { WordContextMenu } from "src/ui/word-context-menu";
 import { TextDirection } from "src/utils/strings";
 
 export default class SRPlugin extends Plugin {
     private _uiManager: UIManager | null = null;
     private _dataManager: DataManager | null = null;
+
+    /** Offline English→Chinese dictionary (see src/data/dictionary/). */
+    public readonly dictionary: Ecdict = new Ecdict();
+
+    private _studyPlan: StudyPlanStore | null = null;
+    private _groupManager: GroupManager | null = null;
 
     private _nextNoteReviewHandler: NextNoteReviewHandler | null = null;
     private _commandManager: CommandManager | null = null;
@@ -41,8 +55,62 @@ export default class SRPlugin extends Plugin {
             this.uiManager = uiManager;
             this.commandManager = new CommandManager(this, settingsManager, uiManager);
 
+            const studyPlan = new StudyPlanStore(this.app, this.manifest.id);
+            this._studyPlan = studyPlan;
+            this._groupManager = new GroupManager(this, settingsManager, studyPlan);
+
+            // 右键菜单：选中一个英文单词时可以直接建卡；任何时候都能提取本笔记生词
+            this.registerEvent(
+                this.app.workspace.on("editor-menu", (menu, editor) => {
+                    const selection = editor.getSelection().trim();
+                    if (/^[A-Za-z][A-Za-z'’-]*$/.test(selection)) {
+                        menu.addItem((item) =>
+                            item
+                                .setTitle(t("CREATE_VOCAB_CARD"))
+                                .setIcon("book-plus")
+                                .onClick(() => {
+                                    new CreateVocabCardModal(
+                                        this.app,
+                                        this.dictionary,
+                                        settingsManager,
+                                        selection,
+                                    ).open();
+                                }),
+                        );
+                    }
+
+                    menu.addItem((item) =>
+                        item
+                            .setTitle(t("EXTRACT_COMMAND"))
+                            .setIcon("list-plus")
+                            .onClick(() => {
+                                new ExtractWordsModal(
+                                    this.app,
+                                    this.dictionary,
+                                    settingsManager,
+                                    editor.getValue(),
+                                    this.app.workspace.getActiveFile(),
+                                ).open();
+                            }),
+                    );
+                }),
+            );
+
+            // 左侧丝带图标：快速建卡
+            this.addRibbonIcon("book-plus", t("CREATE_VOCAB_CARD"), () => {
+                new CreateVocabCardModal(this.app, this.dictionary, settingsManager).open();
+            });
+
+            // 阅读模式里把已经有词卡的单词高亮出来
+            new VocabHighlighter(this, settingsManager).register();
+
+            // 阅读模式里右键一个英文单词即可自动选中并建卡
+            new WordContextMenu(this, settingsManager).register();
+
             this.app.workspace.onLayoutReady(async () => {
                 this.dataManager.loadData();
+                void this.dictionary.load(this.app, this.manifest.id);
+                await studyPlan.load();
 
                 // Set the preferred locale if it is not the default
                 if (settingsManager.settings.preferredLocale !== "-") {
@@ -85,6 +153,16 @@ export default class SRPlugin extends Plugin {
     get reminderManager(): ReminderManager {
         if (this._reminderManager === null) throw new Error("Reminder manager not initialized!!!");
         return this._reminderManager;
+    }
+
+    get studyPlan(): StudyPlanStore {
+        if (this._studyPlan === null) throw new Error("Study plan not initialized!!!");
+        return this._studyPlan;
+    }
+
+    get groupManager(): GroupManager {
+        if (this._groupManager === null) throw new Error("Group manager not initialized!!!");
+        return this._groupManager;
     }
 
     get uiManager(): UIManager {

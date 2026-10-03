@@ -30,10 +30,15 @@ export default class CardToolbarComponent {
         skipCurrentCard: () => void,
         onOpenResetModalClick: () => void,
         closeModal?: () => void,
+        minimal: boolean = false,
     ) {
         // Build ui
         this.toolbar = parentEl.createDiv();
         this.toolbar.addClass("sr-card-toolbar");
+        // 精简模式（复习侧栏）：整条 toolbar 隐藏，只保留卡片与评分按钮
+        if (minimal) {
+            this.toolbar.addClass("sr-is-hidden");
+        }
         const isModal = closeModal !== undefined;
 
         new BackButtonComponent(this.toolbar, async () => await backToDeckHandler(), [

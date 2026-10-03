@@ -28,6 +28,8 @@ export interface PluginData {
     buryList: string[];
     historyDeck: string | null;
     scheduleData: ISerializedScheduleData;
+    // Tracks how many reviews were completed on a given day, for the dashboard.
+    reviewedToday: { date: string; count: number };
 }
 
 export const DEFAULT_DATA: PluginData = {
@@ -40,4 +42,5 @@ export const DEFAULT_DATA: PluginData = {
         noteSchedules: {},
         cardSchedules: {},
     },
+    reviewedToday: { date: "", count: 0 },
 };

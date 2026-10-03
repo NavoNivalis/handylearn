@@ -1,7 +1,7 @@
 {
-    "name": "obsidian-spaced-repetition",
-    "version": "1.15.4",
-    "description": "Fight the forgetting curve by reviewing flashcards & entire notes.",
+    "name": "handylearn",
+    "version": "1.0.0",
+    "description": "Pick up English effortlessly while reading in Obsidian.",
     "main": "main.js",
     "scripts": {
         "build": "pnpm install && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
@@ -19,10 +19,7 @@
         "flashcard",
         "flashcards"
     ],
-    "author": "Stephen Mwangi",
-    "maintainers": [
-        "Kyle Klus"
-    ],
+    "author": "Navo",
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "^10.0.1",

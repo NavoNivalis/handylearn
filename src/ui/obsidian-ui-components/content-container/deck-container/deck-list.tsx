@@ -49,7 +49,7 @@ export default class DeckListComponent {
         this.treeHeaderRowText = this.treeHeaderRowInner.createDiv("tag-pane-tag-text");
         this.treeHeaderRowTextSpan = this.treeHeaderRowText.createSpan("tag-pane-tag-self");
         this.treeHeaderRowTextSpan.addClass("sr-tree-row-text");
-        this.treeHeaderRowTextSpan.setText("Title"); // TODO: i18n
+        this.treeHeaderRowTextSpan.setText(t("TITLE"));
 
         this.treeHeaderRowNumbersWrapper = this.treeHeaderRowSelf.createDiv();
         this.treeHeaderRowNumbersWrapper.addClasses([
@@ -125,7 +125,7 @@ export default class DeckListComponent {
 
         // Creates the "All Decks" row
         this._crateTreeRow(
-            "All Decks",
+            t("ALL_DECKS"),
             originDeckStats,
             0,
             this.treeContainer,

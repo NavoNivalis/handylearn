@@ -5,6 +5,8 @@ export interface IBaseLocale {
     CRAM_MODE: string;
     REVIEW_MODE: string;
     DECKS: string;
+    ALL_DECKS: string;
+    TITLE: string;
     DUE_CARDS: string;
     DUE: string;
     NEW_CARDS: string;
@@ -20,6 +22,90 @@ export interface IBaseLocale {
     GOOD: string;
     EASY: string;
     SHOW_ANSWER: string;
+    HINT?: string;
+
+    // vocabulary cards
+    CREATE_VOCAB_CARD?: string;
+    VOCAB_WORD_LABEL?: string;
+    VOCAB_WORD_NOT_FOUND?: string;
+    VOCAB_NOTE_EXISTS?: string;
+    VOCAB_NOTE_CREATED?: string;
+    VOCAB_SELECTION_COMMAND?: string;
+    VOCAB_NO_SELECTION?: string;
+    PRONOUNCE?: string;
+    QUIZ_TYPE_INPUT?: string;
+    QUIZ_CORRECT?: string;
+    QUIZ_WRONG?: string;
+    VOCAB_AI_GENERATE?: string;
+    VOCAB_AI_GENERATING?: string;
+    VOCAB_AI_FAILED?: string;
+    VOCAB_AI_NOT_CONFIGURED?: string;
+    VOCAB_BATCH_TITLE?: string;
+    VOCAB_BATCH_LIST?: string;
+    VOCAB_BATCH_COUNT?: string;
+    VOCAB_BATCH_TOTAL?: string;
+    VOCAB_BATCH_WITH_EXAMPLE?: string;
+    VOCAB_BATCH_START?: string;
+    VOCAB_BATCH_PROGRESS?: string;
+    VOCAB_BATCH_DONE?: string;
+    VOCAB_SETTINGS_TITLE?: string;
+    VOCAB_SETTINGS_FOLDER?: string;
+    VOCAB_SETTINGS_PROVIDER?: string;
+    VOCAB_SETTINGS_API_KEY?: string;
+    VOCAB_SETTINGS_MODEL?: string;
+
+    // study plan
+    STUDY_TODAY_TITLE?: string;
+    STUDY_GROUP_LABEL?: string;
+    STUDY_NO_GROUP?: string;
+    STUDY_START?: string;
+    STUDY_CHECKED_IN?: string;
+    STUDY_STREAK?: string;
+    STUDY_ARTICLE?: string;
+    STUDY_BW_MISSING?: string;
+    STUDY_QUEUE_FAILED?: string;
+    STUDY_CARD_RECALL?: string;
+    STUDY_CARD_SPELL?: string;
+    STUDY_STATUS_NEW?: string;
+    STUDY_STATUS_LEARNING?: string;
+    STUDY_STATUS_MASTERED?: string;
+    STUDY_SUMMARY_TOTAL?: string;
+    STUDY_NEW_GROUP?: string;
+    STUDY_NO_MORE_WORDS?: string;
+    STUDY_LIST_PROGRESS?: string;
+    STUDY_GROUP_TITLE?: string;
+    STUDY_GROUP_META?: string;
+    STUDY_TECHNICAL?: string;
+    STUDY_NO_TECHNICAL?: string;
+    STUDY_CLASS_COUNT?: string;
+    STUDY_CLASS_TOTAL?: string;
+    STUDY_CLASS_EMPTY?: string;
+    EXTRACT_COMMAND?: string;
+    EXTRACT_TITLE?: string;
+    EXTRACT_NONE?: string;
+    EXTRACT_CREATE?: string;
+    EXTRACT_DONE?: string;
+    EXTRACT_GROUP_HIGH?: string;
+    EXTRACT_GROUP_MID?: string;
+    EXTRACT_GROUP_TECHNICAL?: string;
+    EXTRACT_GROUP_ZK?: string;
+    EXTRACT_GROUP_GK?: string;
+    EXTRACT_GROUP_CET4?: string;
+    EXTRACT_GROUP_CET6?: string;
+    EXTRACT_GROUP_KY?: string;
+    EXTRACT_GROUP_TOEFL?: string;
+    EXTRACT_GROUP_IELTS?: string;
+    EXTRACT_GROUP_GRE?: string;
+    EXTRACT_MODE_EXAM?: string;
+    EXTRACT_MODE_FREQUENCY?: string;
+    EXTRACT_SELECT_ALL?: string;
+    EXTRACT_CLEAR_ALL?: string;
+    VOCAB_SETTINGS_IGNORE_WORDS?: string;
+    VOCAB_SETTINGS_IGNORE_WORDS_DESC?: string;
+    STUDY_SETTINGS_LIST?: string;
+    STUDY_SETTINGS_GROUP_SIZE?: string;
+    STUDY_SETTINGS_BW_FILE?: string;
+    STUDY_SETTINGS_BW_FILE_DESC?: string;
     CARD_PROGRESS_RESET: string;
     SAVE: string;
     CANCEL: string;
@@ -353,4 +439,23 @@ export interface IBaseLocale {
     DEBUG_LOG: string;
     COPY: string;
     NO_DECKS_TO_REVIEW: string;
+
+    // dashboard
+    DASHBOARD_TITLE: string;
+    DUE_TODAY: string;
+    REVIEWED_TODAY: string;
+    START_REVIEW: string;
+    BACK_TO_DASHBOARD: string;
+
+    // vocabulary library
+    VOCAB_LIBRARY_TITLE?: string;
+    VOCAB_SEARCH_PLACEHOLDER?: string;
+    VOCAB_SEARCH_BUTTON?: string;
+    VOCAB_FILTER_ALL?: string;
+    VOCAB_SORT_FREQUENCY?: string;
+    VOCAB_SORT_ALPHA?: string;
+    VOCAB_SORT_RECENT?: string;
+    VOCAB_BACK_TO_LIBRARY?: string;
+    VOCAB_NO_RESULTS?: string;
+    VOCAB_FREQUENCY?: string;
 }

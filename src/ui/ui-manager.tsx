@@ -427,7 +427,7 @@ export class UIManager {
         if (openInNewTab) {
             await this.tabViewManager.openSRTabView(reviewQueueLoader);
         } else {
-            this.openFlashcardModal(reviewQueueLoader);
+            await this.sidebarManager.openReviewSidebarView(mode, singleNote ?? null);
         }
         this.focusObsidianWindow();
     }

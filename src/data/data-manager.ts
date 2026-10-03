@@ -269,6 +269,8 @@ export class DataManager {
             this.settingsManager.settings,
         );
 
+        await this.incrementReviewedToday();
+
         new Notice(t("RESPONSE_RECEIVED"));
 
         if (this.settingsManager.settings.autoNextNote) {
@@ -287,5 +289,27 @@ export class DataManager {
         } catch (error) {
             console.warn("DataManager: Error saving plugin data", error);
         }
+    }
+
+    /**
+     * Returns how many reviews were completed today, for the dashboard.
+     */
+    getReviewedTodayCount(): number {
+        const today = window.moment(Date.now()).format("YYYY-MM-DD");
+        const reviewed = this.pluginDataManager.pluginData.reviewedToday;
+        return reviewed && reviewed.date === today ? reviewed.count : 0;
+    }
+
+    /**
+     * Increments the today's review counter, resetting it when the day changes.
+     */
+    async incrementReviewedToday(): Promise<void> {
+        const today = window.moment(Date.now()).format("YYYY-MM-DD");
+        const data = this.pluginDataManager.pluginData;
+        if (!data.reviewedToday || data.reviewedToday.date !== today) {
+            data.reviewedToday = { date: today, count: 0 };
+        }
+        data.reviewedToday.count++;
+        await this.savePluginData();
     }
 }

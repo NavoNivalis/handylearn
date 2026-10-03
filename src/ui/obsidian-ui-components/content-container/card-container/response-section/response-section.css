@@ -2,21 +2,46 @@
 
 .sr-response {
     display: flex;
-    gap: var(--size-4-4);
-    padding: var(--size-4-2) var(--internal-side-padding);
+    gap: var(--size-4-3);
+    padding: var(--size-4-3) var(--internal-side-padding);
     border-top: 1px solid var(--background-modifier-border);
+    background-color: color-mix(in srgb, var(--background-primary) 70%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 
     & .sr-response-button {
-        height: 48px;
+        height: 56px;
         flex-grow: 1;
         margin: auto;
-        line-height: 48px;
+        line-height: 56px;
         text-align: center;
         cursor: pointer;
         user-select: none;
+        border-radius: var(--radius-l);
+        border: 2px solid rgb(255 255 255 / 30%);
+        box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+        transition:
+            transform 0.12s ease,
+            box-shadow 0.12s ease,
+            filter 0.12s ease;
 
         & > * {
             display: none;
+        }
+
+        &:hover {
+            box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+            transform: translateY(-2px) scale(1.03);
+            filter: brightness(1.05);
+        }
+
+        &:active {
+            box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+            transform: translateY(1px) scale(0.98);
+        }
+
+        &:disabled {
+            cursor: not-allowed;
         }
     }
 }
@@ -135,4 +160,58 @@ body:not(.is-mobile)
     .sr-card-container:not(.sr-custom-hotkeys)
     .sr-response-button.sr-easy-button::after {
     content: "3";
+}
+
+/* MARK: Frosted-glass rating buttons (no default color, semantic color on hover/active) */
+
+.sr-response .sr-response-button {
+    color: var(--text-normal) !important;
+    background: linear-gradient(
+            135deg,
+            rgb(255 255 255 / 10%),
+            rgb(255 255 255 / 2%)
+        ) !important;
+    border: 1px solid rgb(255 255 255 / 14%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.sr-response .sr-response-button.sr-bg-red:hover,
+.sr-response .sr-response-button.sr-bg-red:active {
+    color: #ffffff !important;
+    background: linear-gradient(
+            135deg,
+            var(--color-red),
+            color-mix(in srgb, var(--color-red) 50%, transparent)
+        ) !important;
+}
+
+.sr-response .sr-response-button.sr-bg-yellow:hover,
+.sr-response .sr-response-button.sr-bg-yellow:active {
+    color: #ffffff !important;
+    background: linear-gradient(
+            135deg,
+            var(--color-orange),
+            color-mix(in srgb, var(--color-orange) 50%, transparent)
+        ) !important;
+}
+
+.sr-response .sr-response-button.sr-bg-blue:hover,
+.sr-response .sr-response-button.sr-bg-blue:active {
+    color: #ffffff !important;
+    background: linear-gradient(
+            135deg,
+            var(--color-blue),
+            color-mix(in srgb, var(--color-blue) 50%, transparent)
+        ) !important;
+}
+
+.sr-response .sr-response-button.sr-bg-green:hover,
+.sr-response .sr-response-button.sr-bg-green:active {
+    color: #ffffff !important;
+    background: linear-gradient(
+            135deg,
+            var(--color-green),
+            color-mix(in srgb, var(--color-green) 50%, transparent)
+        ) !important;
 }

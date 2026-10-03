@@ -23,9 +23,15 @@
     }
 
     & .sr-tree-item-row {
-        padding-top: 2px;
-        padding-bottom: 2px;
-        margin-bottom: 0;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        margin-bottom: 2px;
+        border-radius: var(--radius-m);
+        transition: background-color 0.15s ease;
+
+        &.is-clickable:hover {
+            background-color: var(--background-modifier-hover);
+        }
 
         &.is-disabled {
             cursor: not-allowed;
@@ -35,7 +41,7 @@
 
     & .sr-tree-stats-container {
         display: flex;
-        gap: var(--size-4-1);
+        gap: var(--size-4-2);
     }
 
     & .sr-tree-stats-count {
@@ -43,9 +49,12 @@
         justify-content: center;
         align-items: center;
         /* 32px = 5ch */
-        min-width: calc(32px + var(--size-2-1) * 2);
+        min-width: calc(36px + var(--size-2-1) * 2);
         padding: var(--size-4-1) var(--size-2-1);
         text-align: center;
+        border-radius: var(--tag-radius);
+        border: 1px solid rgb(255 255 255 / 25%);
+        box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
     }
 
     & .sr-tree-stats-count:not(.sr-fg-green, .sr-fg-blue, .sr-fg-red, .sr-fg-yellow) {

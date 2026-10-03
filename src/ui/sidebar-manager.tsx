@@ -1,7 +1,12 @@
-import { App, WorkspaceLeaf } from "obsidian";
+import { App, TFile, WorkspaceLeaf } from "obsidian";
 
 import { SettingsManager } from "src/data/settings-manager";
 import SRPlugin from "src/main";
+import { FlashcardReviewMode } from "src/scheduling/flashcard-review-sequencer";
+import {
+    REVIEW_SIDEBAR_VIEW_TYPE,
+    SRReviewSidebarView,
+} from "src/ui/obsidian-ui-components/item-views/review-sidebar-view";
 import {
     REVIEW_QUEUE_VIEW_TYPE,
     ReviewQueueListView,
@@ -11,6 +16,7 @@ export class SidebarManager {
     private plugin: SRPlugin;
     private settingsManager: SettingsManager;
     private reviewQueueListView: ReviewQueueListView | null = null;
+    private reviewSidebarView: SRReviewSidebarView | null = null;
 
     private get app(): App {
         return this.plugin.app;
@@ -44,6 +50,53 @@ export class SidebarManager {
                 this.plugin,
             ));
         });
+
+        this.plugin.registerView(REVIEW_SIDEBAR_VIEW_TYPE, (leaf) => {
+            return (this.reviewSidebarView = new SRReviewSidebarView(
+                leaf,
+                this.plugin,
+                this.settingsManager,
+            ));
+        });
+    }
+
+    /**
+     * Opens the review dashboard sidebar view and prepares it for the given review mode.
+     */
+    async openReviewSidebarView(
+        mode: FlashcardReviewMode,
+        singleNote: TFile | null,
+    ): Promise<void> {
+        const leaf = this.getActiveLeaf(REVIEW_SIDEBAR_VIEW_TYPE);
+        if (!leaf) return;
+
+        await leaf.setViewState({
+            type: REVIEW_SIDEBAR_VIEW_TYPE,
+            active: true,
+        });
+
+        await this.app.workspace.revealLeaf(leaf);
+
+        if (this.reviewSidebarView) {
+            this.reviewSidebarView.prepareReview(mode, singleNote);
+        }
+    }
+
+    /**
+     * Opens the review sidebar and shows a single word card.
+     */
+    async openWordCard(word: string): Promise<void> {
+        const leaf = this.getActiveLeaf(REVIEW_SIDEBAR_VIEW_TYPE);
+        if (!leaf) return;
+
+        await leaf.setViewState({
+            type: REVIEW_SIDEBAR_VIEW_TYPE,
+            active: true,
+        });
+
+        await this.app.workspace.revealLeaf(leaf);
+
+        this.reviewSidebarView?.showWordCard(word);
     }
 
     async activateReviewQueueViewPanel(): Promise<void> {

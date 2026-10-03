@@ -1,6 +1,7 @@
 import { Setting, SettingGroup } from "obsidian";
 
 import { DataManager } from "src/data/data-manager";
+import { EXAM_TAGS } from "src/data/dictionary/vocab-card";
 import { DEFAULT_SETTINGS } from "src/data/settings";
 import { SettingsManager } from "src/data/settings-manager";
 import { t, tHTML } from "src/lang/helpers";
@@ -524,6 +525,122 @@ export class FlashcardsPage extends SettingsPage {
                             });
                     });
                 }
+            });
+
+        new SettingGroup(this.containerEl)
+            .setHeading(t("VOCAB_SETTINGS_TITLE"))
+            .addSetting((setting: Setting) => {
+                setting.setName(t("VOCAB_SETTINGS_FOLDER")).addText((text) =>
+                    text
+                        .setValue(this.settingsManager.settings.vocabOutputFolder)
+                        .onChange((value) => {
+                            applySettingsUpdate(async () => {
+                                this.settingsManager.settings.vocabOutputFolder = value.trim();
+                                await this.settingsManager.save();
+                            });
+                        }),
+                );
+            })
+            .addSetting((setting: Setting) => {
+                setting.setName(t("VOCAB_SETTINGS_PROVIDER")).addDropdown((dropdown) => {
+                    dropdown.addOption("deepseek", "DeepSeek");
+                    dropdown.addOption("doubao", "豆包 / 火山方舟");
+                    dropdown.setValue(this.settingsManager.settings.vocabAiProvider);
+                    dropdown.onChange((value) => {
+                        applySettingsUpdate(async () => {
+                            this.settingsManager.settings.vocabAiProvider = value;
+                            await this.settingsManager.save();
+                        });
+                    });
+                });
+            })
+            .addSetting((setting: Setting) => {
+                setting.setName(t("VOCAB_SETTINGS_API_KEY")).addText((text) => {
+                    text.inputEl.type = "password";
+                    text.setValue(this.settingsManager.settings.vocabAiApiKey).onChange((value) => {
+                        applySettingsUpdate(async () => {
+                            this.settingsManager.settings.vocabAiApiKey = value.trim();
+                            await this.settingsManager.save();
+                        });
+                    });
+                });
+            })
+            .addSetting((setting: Setting) => {
+                setting.setName(t("VOCAB_SETTINGS_MODEL")).addText((text) =>
+                    text
+                        .setValue(this.settingsManager.settings.vocabAiModel)
+                        .onChange((value) => {
+                            applySettingsUpdate(async () => {
+                                this.settingsManager.settings.vocabAiModel = value.trim();
+                                await this.settingsManager.save();
+                            });
+                        }),
+                );
+            })
+            .addSetting((setting: Setting) => {
+                setting
+                    .setName(t("VOCAB_SETTINGS_IGNORE_WORDS"))
+                    .setDesc(t("VOCAB_SETTINGS_IGNORE_WORDS_DESC"))
+                    .addTextArea((text) =>
+                        text
+                            .setPlaceholder("the\nis\nwork")
+                            .setValue(this.settingsManager.settings.vocabIgnoreWords.join("\n"))
+                            .onChange((value) => {
+                                applySettingsUpdate(async () => {
+                                    this.settingsManager.settings.vocabIgnoreWords = value
+                                        .split(/\n+/)
+                                        .map((item) => item.trim().toLowerCase())
+                                        .filter((item) => item.length > 0);
+                                    await this.settingsManager.save();
+                                });
+                            }),
+                    );
+            });
+
+        new SettingGroup(this.containerEl)
+            .setHeading(t("STUDY_TODAY_TITLE"))
+            .addSetting((setting: Setting) => {
+                setting.setName(t("STUDY_SETTINGS_LIST")).addDropdown((dropdown) => {
+                    for (const item of EXAM_TAGS) dropdown.addOption(item.value, item.label);
+                    dropdown.setValue(this.settingsManager.settings.vocabStudyList);
+                    dropdown.onChange((value) => {
+                        applySettingsUpdate(async () => {
+                            this.settingsManager.settings.vocabStudyList = value;
+                            await this.settingsManager.save();
+                        });
+                    });
+                });
+            })
+            .addSetting((setting: Setting) => {
+                setting.setName(t("STUDY_SETTINGS_GROUP_SIZE")).addText((text) => {
+                    text.inputEl.type = "number";
+                    text.setValue(String(this.settingsManager.settings.vocabGroupSize)).onChange(
+                        (value) => {
+                            const size = Number.parseInt(value, 10);
+                            if (!Number.isFinite(size) || size < 1) return;
+                            applySettingsUpdate(async () => {
+                                this.settingsManager.settings.vocabGroupSize = size;
+                                await this.settingsManager.save();
+                            });
+                        },
+                    );
+                });
+            })
+            .addSetting((setting: Setting) => {
+                setting
+                    .setName(t("STUDY_SETTINGS_BW_FILE"))
+                    .setDesc(t("STUDY_SETTINGS_BW_FILE_DESC"))
+                    .addText((text) =>
+                        text
+                            .setValue(this.settingsManager.settings.vocabBeyondWordsFile)
+                            .onChange((value) => {
+                                applySettingsUpdate(async () => {
+                                    this.settingsManager.settings.vocabBeyondWordsFile =
+                                        value.trim();
+                                    await this.settingsManager.save();
+                                });
+                            }),
+                    );
             });
     }
 }

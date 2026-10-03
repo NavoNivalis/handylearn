@@ -2,6 +2,7 @@ import { TFile } from "obsidian";
 
 import { OsrCore } from "src/data/core";
 import { Deck, DeckTreeFilter } from "src/data/data-structures/deck/deck";
+import { TECHNICAL_DECK_NAME } from "src/data/dictionary/vocab-card";
 import {
     DeckOrder,
     DeckTreeIterator,
@@ -19,21 +20,46 @@ import {
     IFlashcardReviewSequencer,
 } from "src/scheduling/flashcard-review-sequencer";
 
+/**
+ * 复制卡组树，并去掉专业词卡组（#flashcards/technical）。
+ * 卡片对象仍是同一批引用（评分才能落到真实卡片上），只复制树的结构。
+ */
+function excludeTechnicalDecks(deck: Deck): Deck {
+    const clone = new Deck(deck.deckName, null);
+    clone.newRepItems = [...deck.newRepItems];
+    clone.dueRepItems = [...deck.dueRepItems];
+    for (const sub of deck.subdecks) {
+        if (sub.deckName === TECHNICAL_DECK_NAME) continue;
+        const subClone = excludeTechnicalDecks(sub);
+        subClone.parent = clone;
+        clone.subdecks.push(subClone);
+    }
+    return clone;
+}
+
 export class ReviewQueueLoader {
     private plugin: SRPlugin;
     private osrCore: OsrCore;
     private singleNote: TFile | null = null;
+    /** 只复习这几篇笔记里的卡片（用于「先复习当前组」） */
+    private noteFiles: TFile[] | null = null;
     private reviewMode: FlashcardReviewMode;
+    /** 是否把专业词卡组排除在队列外（日常复习用） */
+    private skipTechnicalDecks: boolean;
 
     constructor(
         plugin: SRPlugin,
         osrCore: OsrCore,
         singleNote: TFile | null,
         reviewMode: FlashcardReviewMode,
+        noteFiles: TFile[] | null = null,
+        skipTechnicalDecks: boolean = false,
     ) {
         this.osrCore = osrCore;
         this.singleNote = singleNote;
         this.reviewMode = reviewMode;
+        this.noteFiles = noteFiles;
+        this.skipTechnicalDecks = skipTechnicalDecks;
         this.plugin = plugin;
     }
 
@@ -60,7 +86,11 @@ export class ReviewQueueLoader {
         let deckTree: Deck;
         let remainingDeckTree: Deck;
 
-        if (this.singleNote) {
+        if (this.noteFiles !== null && this.noteFiles.length > 0) {
+            const notesData = await this.getPreparedDecksForNotes(this.noteFiles, this.reviewMode);
+            deckTree = notesData.deckTree;
+            remainingDeckTree = notesData.remainingDeckTree;
+        } else if (this.singleNote) {
             const singleNoteDeckData = await this.getPreparedDecksForSingleNoteReview(
                 this.singleNote,
                 this.reviewMode,
@@ -69,11 +99,21 @@ export class ReviewQueueLoader {
             deckTree = singleNoteDeckData.deckTree;
             remainingDeckTree = singleNoteDeckData.remainingDeckTree;
         } else {
-            deckTree = this.osrCore.reviewableDeckTree;
-            remainingDeckTree =
-                this.reviewMode === FlashcardReviewMode.Cram
-                    ? this.osrCore.reviewableDeckTree
-                    : this.osrCore.remainingDeckTree;
+            if (this.skipTechnicalDecks) {
+                // 日常复习不含专业词卡组，避免生僻术语污染队列
+                deckTree = excludeTechnicalDecks(this.osrCore.reviewableDeckTree);
+                remainingDeckTree = excludeTechnicalDecks(
+                    this.reviewMode === FlashcardReviewMode.Cram
+                        ? this.osrCore.reviewableDeckTree
+                        : this.osrCore.remainingDeckTree,
+                );
+            } else {
+                deckTree = this.osrCore.reviewableDeckTree;
+                remainingDeckTree =
+                    this.reviewMode === FlashcardReviewMode.Cram
+                        ? this.osrCore.reviewableDeckTree
+                        : this.osrCore.remainingDeckTree;
+            }
         }
 
         const reviewSequencerData = this.getPreparedReviewSequencer(
@@ -105,6 +145,27 @@ export class ReviewQueueLoader {
 
         reviewSequencer.setDeckTree(fullDeckTree, remainingDeckTree);
         return { reviewSequencer, mode: reviewMode };
+    }
+
+    /** 把多篇笔记的卡片合成一个队列（用于按「组」复习） */
+    public async getPreparedDecksForNotes(
+        files: TFile[],
+        mode: FlashcardReviewMode,
+    ): Promise<{ deckTree: Deck; remainingDeckTree: Deck; mode: FlashcardReviewMode }> {
+        const deckTree = new Deck("root", null);
+
+        for (const file of files) {
+            const note: Note | null = await this.plugin.dataManager.loadNote(file);
+            if (note) note.appendCardsToDeck(deckTree);
+        }
+
+        const remainingDeckTree = DeckTreeFilter.filterForRemainingRepItems(
+            this.plugin.dataManager.osrCore.questionPostponementList,
+            deckTree,
+            mode,
+        );
+
+        return { deckTree, remainingDeckTree, mode };
     }
 
     public async getPreparedDecksForSingleNoteReview(

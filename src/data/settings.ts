@@ -93,6 +93,19 @@ export interface SRSettings {
 
     preferredDateFormatForNoteReviewQueue: string;
     preferredLocale: string;
+
+    // vocabulary cards
+    vocabOutputFolder: string;
+    vocabAiProvider: string;
+    vocabAiApiKey: string;
+    vocabAiModel: string;
+    /** 提取生词时永远跳过的简单词 */
+    vocabIgnoreWords: string[];
+
+    // study plan
+    vocabStudyList: string;
+    vocabGroupSize: number;
+    vocabBeyondWordsFile: string;
 }
 
 export const DEFAULT_SETTINGS: SRSettings = {
@@ -144,7 +157,7 @@ export const DEFAULT_SETTINGS: SRSettings = {
     showUpdateAvailableStatusBarItem: true,
     initiallyExpandAllSubdecksInTree: true,
     showContextInCards: true,
-    showIntervalInReviewButtons: true,
+    showIntervalInReviewButtons: false,
     flashcardHeightPercentage: 60,
     flashcardWidthPercentage: 60,
     flashcardHeightPercentageMobile: 100,
@@ -181,7 +194,19 @@ export const DEFAULT_SETTINGS: SRSettings = {
     showSchedulingDebugMessages: false,
     showParserDebugMessages: false,
     preferredDateFormatForNoteReviewQueue: "MMM DD YYYY",
-    preferredLocale: "-",
+    preferredLocale: "zh-cn",
+
+    // vocabulary cards
+    vocabOutputFolder: "Words",
+    vocabAiProvider: "deepseek",
+    vocabAiApiKey: "",
+    vocabAiModel: "",
+    vocabIgnoreWords: [],
+
+    // study plan
+    vocabStudyList: "cet4",
+    vocabGroupSize: 10,
+    vocabBeyondWordsFile: "Words Form.txt",
 };
 
 export function upgradeSettings(settings: SRSettings) {

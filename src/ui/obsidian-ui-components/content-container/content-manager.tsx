@@ -88,6 +88,9 @@ export default class ContentManager {
 
     private lastPressedOnProcessReview: number = 0;
     private pendingResumeTimeout: number | null = null;
+    private onReviewProcessed: (() => void) | null = null;
+    private minimal: boolean = false;
+    private closeModal: (() => void) | null = null;
 
     constructor(
         app: App,
@@ -96,12 +99,17 @@ export default class ContentManager {
         settings: SRSettings,
         parentEl: HTMLElement,
         closeModal?: () => void,
+        onReviewProcessed?: () => void,
+        minimal: boolean = false,
     ) {
         this.app = app;
         this.plugin = plugin;
         this.reviewQueueLoader = reviewQueueLoader;
         this.settings = settings;
         this.reviewMode = reviewQueueLoader.getReviewMode();
+        this.onReviewProcessed = onReviewProcessed ?? null;
+        this.minimal = minimal;
+        this.closeModal = closeModal ?? null;
 
         this.uiManager = this.plugin.uiManager;
         this.dataManager = this.plugin.dataManager;
@@ -127,6 +135,7 @@ export default class ContentManager {
             this._jumpToCurrentCard.bind(this),
             this._displayCurrentCardInfoNotice.bind(this),
             closeModal,
+            minimal,
         );
     }
 
@@ -202,7 +211,7 @@ export default class ContentManager {
 
     private async _showNextCard(): Promise<void> {
         if (this.sessionData === null || this.reviewSequencer === null) {
-            await this._showDecksList(true);
+            await this._finishOrShowDecks(true);
             return;
         }
 
@@ -213,12 +222,12 @@ export default class ContentManager {
             // } else {
             //     await this._showDecksList(true);
             // }
-            await this._showDecksList(true);
+            await this._finishOrShowDecks(true);
             return;
         }
 
         if (this.reviewSequencer.currentDeck === null) {
-            await this._showDecksList(true);
+            await this._finishOrShowDecks(true);
             return;
         }
 
@@ -255,8 +264,21 @@ export default class ContentManager {
         ) {
             await this.cardContainer.drawCardFront(this.sessionData, this.settings);
         } else {
-            await this._showDecksList(true);
+            await this._finishOrShowDecks(true);
         }
+    }
+
+    /**
+     * 复习完当前队列后的收尾。
+     * 精简模式（复习侧栏）下不显示卡组列表，直接触发阶段完成回调；
+     * 否则回到卡组列表（官方 modal / tab 的原有行为）。
+     */
+    private async _finishOrShowDecks(reloadReviewQueue: boolean): Promise<void> {
+        if (this.minimal && this.closeModal) {
+            this.closeModal();
+            return;
+        }
+        await this._showDecksList(reloadReviewQueue);
     }
 
     private async _showPendingState(): Promise<void> {
@@ -488,6 +510,8 @@ export default class ContentManager {
         this.lastPressedOnProcessReview = timeNow;
 
         await this.reviewSequencer.processReview(response);
+        await this.dataManager.incrementReviewedToday();
+        if (this.onReviewProcessed) this.onReviewProcessed();
         await this._showNextCard();
     }
 

@@ -9,6 +9,7 @@
         overflow: hidden;
         flex-grow: 1;
         display: flex;
+        padding: var(--size-4-4);
 
         & .sr-content {
             font-size: var(--font-text-size);
@@ -17,8 +18,13 @@
             user-select: text;
             flex-grow: 1;
             word-break: break-word;
-            padding: 0 var(--internal-side-padding);
-            padding-top: var(--size-4-2);
+            padding: var(--size-4-6);
+            background-color: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--background-modifier-border);
+            border-radius: var(--radius-l);
+            box-shadow: 0 6px 24px rgb(0 0 0 / 15%);
         }
     }
 
@@ -60,4 +66,172 @@
             margin-block-end: 0.25rem;
         }
     }
+}
+
+/* MARK: 闪卡内容排版（词汇卡） */
+
+/* 正面（英文单词）：大号 + 粗体 + 居中 */
+.sr-card-container .sr-content > p {
+    font-size: 2em;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* 中文正面（拼卡：看中文输英文）：正常字号/字重，左对齐 */
+.sr-card-container .sr-content.sr-content-zh > p {
+    font-size: var(--font-text-size);
+    font-weight: normal;
+    text-align: left;
+}
+
+/* 背面（分隔线 hr 之后的内容）：正常字号/字重，左对齐 */
+.sr-card-container .sr-content > hr ~ p {
+    font-size: var(--font-text-size);
+    font-weight: normal;
+    text-align: left;
+}
+
+/* 音标（分隔线后第一行）：弱化色 + 居中 */
+.sr-card-container .sr-content > hr + p {
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* 例句（引用块）：斜体 + 强调线 + 弱化色 */
+.sr-card-container .sr-content blockquote {
+    font-style: italic;
+    color: var(--text-muted);
+    border-left-color: var(--color-blue);
+}
+
+/* MARK: 正面发音按钮 */
+
+.sr-card-container .sr-content > .sr-pronounce-button {
+    display: block;
+    margin: 0 auto var(--size-4-2);
+    padding: var(--size-4-1);
+    border: none;
+    border-radius: 50%;
+    background-color: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.sr-card-container .sr-content > .sr-pronounce-button:hover {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
+}
+
+/* MARK: 正面答题区（选择题 / 打字题） */
+
+.sr-card-container .sr-content > .sr-quiz {
+    margin-top: var(--size-4-4);
+}
+
+.sr-card-container .sr-content > .sr-quiz > .sr-quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.sr-card-container .sr-content > .sr-quiz .sr-quiz-option {
+    width: 100%;
+    height: auto;
+    padding: var(--size-4-2) var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background-color: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+    color: var(--text-normal);
+    font-size: var(--font-text-size);
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.sr-card-container .sr-content > .sr-quiz .sr-quiz-option:hover:not(:disabled) {
+    border-color: var(--text-accent);
+}
+
+.sr-card-container .sr-content > .sr-quiz .sr-quiz-option:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.sr-card-container .sr-content > .sr-quiz .sr-quiz-option-answer {
+    border-color: var(--color-green);
+    color: var(--color-green);
+    opacity: 1;
+}
+
+.sr-card-container .sr-content > .sr-quiz .sr-quiz-input {
+    width: 100%;
+    height: auto;
+    padding: var(--size-4-2) var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    font-size: var(--font-text-size);
+}
+
+.sr-card-container .sr-content > .sr-quiz .sr-quiz-input:disabled {
+    opacity: 1;
+}
+
+.sr-card-container .sr-content > .sr-quiz.sr-quiz-correct .sr-quiz-input {
+    border-color: var(--color-green);
+    color: var(--color-green);
+}
+
+.sr-card-container .sr-content > .sr-quiz.sr-quiz-wrong .sr-quiz-input {
+    border-color: var(--color-red);
+    color: var(--color-red);
+}
+
+.sr-card-container .sr-content > .sr-quiz-result {
+    margin-top: var(--size-4-3);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-m);
+    font-size: var(--font-smaller);
+    text-align: center;
+}
+
+.sr-card-container .sr-content > .sr-quiz-result-correct {
+    color: var(--color-green);
+    background-color: color-mix(in srgb, var(--color-green) 12%, transparent);
+}
+
+.sr-card-container .sr-content > .sr-quiz-result-wrong {
+    color: var(--color-red);
+    background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
+}
+
+/* MARK: 正面提示（点击展开，来自背面例句） */
+
+.sr-card-container .sr-content > .sr-card-hint {
+    margin-top: var(--size-4-4);
+    font-size: var(--font-smaller);
+}
+
+.sr-card-container .sr-content > .sr-card-hint > summary {
+    cursor: pointer;
+    color: var(--text-accent);
+    text-align: center;
+    user-select: none;
+    list-style: none;
+}
+
+.sr-card-container .sr-content > .sr-card-hint > summary::-webkit-details-marker {
+    display: none;
+}
+
+.sr-card-container .sr-content > .sr-card-hint > div {
+    margin-top: var(--size-4-2);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-m);
+    background-color: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+    color: var(--text-muted);
+    text-align: center;
 }

@@ -1,10 +1,13 @@
-import { Platform, TFile } from "obsidian";
+import { Notice, Platform, TFile } from "obsidian";
 
 import { SettingsManager } from "src/data/settings-manager";
 import { t } from "src/lang/helpers";
 import SRPlugin from "src/main";
 import { ReviewResponse } from "src/scheduling/algorithms/base/repetition-item";
 import { FlashcardReviewMode } from "src/scheduling/flashcard-review-sequencer";
+import { BatchVocabModal } from "src/ui/obsidian-ui-components/modals/batch-vocab-modal";
+import { CreateVocabCardModal } from "src/ui/obsidian-ui-components/modals/create-vocab-card-modal";
+import { ExtractWordsModal } from "src/ui/obsidian-ui-components/modals/extract-words-modal";
 import { UIManager, UIState } from "src/ui/ui-manager";
 import EmulatedPlatform from "src/utils/platform-detector";
 
@@ -438,6 +441,62 @@ export class CommandManager {
             callback: async () => {
                 if (!this.plugin.isInitialized) return;
                 await this.uiManager.sidebarManager.openReviewQueueView();
+            },
+        });
+
+        this.plugin.addCommand({
+            id: "srs-create-vocab-card",
+            name: t("CREATE_VOCAB_CARD"),
+            callback: () => {
+                new CreateVocabCardModal(
+                    this.plugin.app,
+                    this.plugin.dictionary,
+                    this.settingsManager,
+                ).open();
+            },
+        });
+
+        this.plugin.addCommand({
+            id: "srs-create-vocab-card-from-selection",
+            name: t("VOCAB_SELECTION_COMMAND"),
+            editorCallback: (editor) => {
+                const selection = editor.getSelection().trim();
+                if (!/^[A-Za-z][A-Za-z'’-]*$/.test(selection)) {
+                    new Notice(t("VOCAB_NO_SELECTION"));
+                    return;
+                }
+                new CreateVocabCardModal(
+                    this.plugin.app,
+                    this.plugin.dictionary,
+                    this.settingsManager,
+                    selection,
+                ).open();
+            },
+        });
+
+        this.plugin.addCommand({
+            id: "srs-extract-words-from-note",
+            name: t("EXTRACT_COMMAND"),
+            editorCallback: (editor) => {
+                new ExtractWordsModal(
+                    this.plugin.app,
+                    this.plugin.dictionary,
+                    this.settingsManager,
+                    editor.getValue(),
+                    this.plugin.app.workspace.getActiveFile(),
+                ).open();
+            },
+        });
+
+        this.plugin.addCommand({
+            id: "srs-batch-vocab-cards",
+            name: t("VOCAB_BATCH_TITLE"),
+            callback: () => {
+                new BatchVocabModal(
+                    this.plugin.app,
+                    this.plugin.dictionary,
+                    this.settingsManager,
+                ).open();
             },
         });
     }
