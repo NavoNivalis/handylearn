@@ -1,4 +1,5 @@
 import { App, normalizePath } from "obsidian";
+import bundledDict from "../../ecdict-mini.json";
 
 /** 词典里的一条词条，字段名与 ecdict-mini.json 保持一致（尽量短）。 */
 export interface DictEntry {
@@ -28,11 +29,18 @@ export class Ecdict {
     async load(app: App, pluginId: string): Promise<void> {
         if (this.map !== null) return;
 
+        // 优先读插件目录下的词典文件（手动安装可替换），
+        // 不存在则回退到构建时内联进 main.js 的词典数据，保证社区安装后开箱即用。
         const path = normalizePath(`${app.vault.configDir}/plugins/${pluginId}/ecdict-mini.json`);
-        if (!(await app.vault.adapter.exists(path))) return;
+        let data: Record<string, DictEntry>;
+        if (await app.vault.adapter.exists(path)) {
+            const raw = await app.vault.adapter.read(path);
+            data = JSON.parse(raw) as Record<string, DictEntry>;
+        } else {
+            data = bundledDict as Record<string, DictEntry>;
+        }
 
-        const raw = await app.vault.adapter.read(path);
-        this.map = new Map(Object.entries(JSON.parse(raw) as Record<string, DictEntry>));
+        this.map = new Map(Object.entries(data));
     }
 
     isLoaded(): boolean {
