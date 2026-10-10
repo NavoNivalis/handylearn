@@ -1,0 +1,18 @@
+{
+    "name": "handylearn",
+    "version": "1.0.0",
+    "description": "Pick up English effortlessly while reading in Obsidian.",
+    "main": "main.js",
+    "scripts": {
+        "dev": "node esbuild.config.mjs",
+        "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    },
+    "author": "Navo",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^25.9.5",
+        "esbuild": "^0.28.1",
+        "obsidian": "^1.13.1",
+        "typescript": "~5.9.3"
+    }
+}

@@ -1,0 +1,277 @@
+/* 阅读模式高亮已建卡单词 */
+.hl-known-word {
+    border-bottom: 1px dashed var(--text-accent);
+    cursor: pointer;
+}
+
+.hl-known-word:hover {
+    background: var(--text-accent);
+    color: var(--text-on-accent);
+}
+
+/* 右侧栏主页 */
+.hl-header {
+    margin-bottom: 12px;
+}
+
+.hl-header h4 {
+    margin: 0;
+}
+
+.hl-stats {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin-bottom: 12px;
+}
+
+.hl-primary-btn {
+    width: 100%;
+    padding: 8px;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+
+.hl-list-header {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.hl-empty {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    padding: 8px 0;
+}
+
+.hl-word-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hl-word-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.hl-word-item:hover {
+    background: var(--background-modifier-hover);
+}
+
+.hl-word {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.hl-gloss {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 单词卡 */
+.hl-back-btn {
+    padding: 4px 8px;
+    cursor: pointer;
+    margin-bottom: 8px;
+}
+
+.hl-wordcard-title {
+    font-size: var(--font-ui-large);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.hl-wordcard-ipa {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.hl-speak-btn {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    vertical-align: middle;
+}
+
+.hl-speak-btn:hover {
+    color: var(--text-accent);
+}
+
+.hl-wordcard-body {
+    font-size: var(--font-text-size);
+}
+
+/* 复习 */
+.hl-review-top {
+    margin-bottom: 8px;
+}
+
+.hl-progress {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin-bottom: 12px;
+}
+
+.hl-card-front {
+    font-size: var(--font-text-size);
+    padding: 16px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.hl-card-front > p {
+    margin: 0;
+}
+
+.hl-divider {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin: 8px 0;
+}
+
+.hl-card-back {
+    font-size: var(--font-text-size);
+    padding: 16px;
+    background: var(--background-primary);
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+    margin-bottom: 16px;
+}
+
+.hl-card-back > p {
+    margin: 4px 0;
+}
+
+.hl-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hl-rate-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.hl-show-btn {
+    width: 100%;
+    padding: 8px;
+    cursor: pointer;
+}
+
+/* 拼写卡输入 */
+.hl-spell-ipa {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin-top: 8px;
+}
+
+.hl-spell-input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 12px;
+    box-sizing: border-box;
+}
+
+.hl-spell-feedback {
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+    margin: 8px 0;
+}
+
+/* 建卡弹窗预览 */
+.hl-vocab-preview {
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: var(--font-ui-small);
+    background: var(--background-secondary);
+    border-radius: 6px;
+    padding: 8px;
+    white-space: pre-wrap;
+}
+
+.hl-vocab-progress {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin-bottom: 8px;
+}
+
+/* 提取生词弹窗 */
+.hl-extract-topbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.hl-extract-list {
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.hl-extract-empty {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+.hl-extract-group {
+    margin-bottom: 8px;
+}
+
+.hl-extract-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.hl-extract-title {
+    font-weight: 600;
+}
+
+.hl-extract-count {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+.hl-extract-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0 4px 4px;
+}
+
+.hl-extract-word {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.hl-extract-gloss {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.hl-extract-times {
+    color: var(--text-faint);
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+}

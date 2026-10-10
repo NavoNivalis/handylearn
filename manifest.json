@@ -1,0 +1,10 @@
+{
+    "id": "handylearn",
+    "name": "HandyLearn",
+    "version": "1.0.0",
+    "minAppVersion": "1.2.8",
+    "description": "Pick up English effortlessly while reading in Obsidian.",
+    "author": "Navo",
+    "authorUrl": "https://github.com/NavoNivalis",
+    "isDesktopOnly": false
+}
