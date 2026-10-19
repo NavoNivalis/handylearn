@@ -1,6 +1,6 @@
 {
     "name": "handylearn",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "description": "Pick up English effortlessly while reading in Obsidian.",
     "main": "main.js",
     "scripts": {
