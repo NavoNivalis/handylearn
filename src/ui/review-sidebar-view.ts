@@ -1,12 +1,15 @@
 import { Component, ItemView, MarkdownRenderer, Notice, Scope, setIcon, WorkspaceLeaf } from "obsidian";
 
-import { ReviewCard } from "src/engine/card";
+import { FIELD_GLOSS, FIELD_IPA, ReviewCard } from "src/engine/card";
 import { pronounce } from "src/utils/pronounce";
 import { ReviewRating } from "src/engine/scheduler";
 import { VocabStore } from "src/engine/store";
 import { collectVocabRecords, VocabRecord } from "src/dictionary/vocab-library";
 import { firstGloss } from "src/dictionary/vocab-card";
+import { addSimpleWord } from "src/dictionary/simple-words";
 import { parseVocabNote } from "src/engine/parser";
+import { EditFieldsModal } from "src/ui/modals/edit-fields-modal";
+import { FieldTemplateModal } from "src/ui/modals/field-template-modal";
 import type HandyLearnPlugin from "src/main";
 
 export const REVIEW_VIEW_TYPE = "handylearn-view";
@@ -119,6 +122,14 @@ export class ReviewSidebarView extends ItemView {
         });
         extractBtn.addEventListener("click", () => void this.plugin.extractFromActiveNote());
 
+        const templateBtn = this.contentEl.createEl("button", {
+            text: "字段模板",
+            cls: "hl-primary-btn",
+        });
+        templateBtn.addEventListener("click", () => {
+            new FieldTemplateModal(this.app, this.plugin).open();
+        });
+
         const listHeader = this.contentEl.createDiv({ cls: "hl-list-header" });
         listHeader.setText(`词库（${records.length}）`);
 
@@ -165,6 +176,35 @@ export class ReviewSidebarView extends ItemView {
             else void this.renderDashboard();
         });
 
+        const source = this.firstSource(record);
+        if (source !== null) {
+            const locateBtn = this.contentEl.createEl("button", {
+                text: "定位到出处",
+                cls: "hl-back-btn",
+            });
+            locateBtn.addEventListener("click", () => {
+                void this.plugin.locateWord(record.word, source, record.file.path);
+            });
+        }
+
+        const simpleBtn = this.contentEl.createEl("button", {
+            text: "标记为简单词",
+            cls: "hl-back-btn",
+        });
+        simpleBtn.addEventListener("click", () => {
+            void addSimpleWord(this.app, folder, record.word).then(() => {
+                new Notice(`已加入简单词：${record.word}`);
+            });
+        });
+
+        const editBtn = this.contentEl.createEl("button", {
+            text: "编辑字段",
+            cls: "hl-back-btn",
+        });
+        editBtn.addEventListener("click", () => {
+            void this.openFieldEditor(record);
+        });
+
         const title = this.contentEl.createDiv({ cls: "hl-wordcard-title" });
         title.setText(record.word);
         if (record.entry?.ipa) {
@@ -177,6 +217,32 @@ export class ReviewSidebarView extends ItemView {
 
         const body = this.contentEl.createDiv({ cls: "hl-wordcard-body" });
         await MarkdownRenderer.render(this.app, back, body, record.file.path, this.component);
+    }
+
+    /** 打开字段编辑弹窗（读取最新的笔记内容）。 */
+    private async openFieldEditor(record: VocabRecord): Promise<void> {
+        const text = await this.app.vault.read(record.file);
+        const fields = parseVocabNote(text, record.file.path)[0]?.fields ?? [];
+        new EditFieldsModal(
+            this.app,
+            this.plugin,
+            record.file,
+            record.word,
+            fields,
+        ).open();
+    }
+
+    /** 词卡出处里第一个 [[文章名]] 的 linktext；没有出处返回 null。 */
+    private firstSource(record: VocabRecord): string | null {
+        const fm = this.app.metadataCache.getFileCache(record.file)?.frontmatter;
+        const source =
+            typeof fm?.source === "string"
+                ? fm.source
+                : Array.isArray(fm?.source)
+                  ? fm.source[0]
+                  : null;
+        if (typeof source !== "string") return null;
+        return /\[\[([^\]]+)\]\]/.exec(source)?.[1] ?? null;
     }
 
     // ---------- 复习 ----------
@@ -266,22 +332,23 @@ export class ReviewSidebarView extends ItemView {
         }
     }
 
-    /** 从拼写卡正面（完整释义）里抽出中文释义 + 音标提示，避免英文例句/词形泄题。 */
+    /** 拼写卡正面只显示释义 + 音标，避免例句/词形泄题。 */
     private spellingPrompt(card: ReviewCard): { gloss: string; ipa: string } {
-        const glossLines: string[] = [];
-        let ipa = "";
-        let glossEnded = false;
-        for (const line of card.front.split("\n")) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith("**音标：**")) {
-                ipa = trimmed.replace("**音标：**", "").trim();
-            } else if (!glossEnded && trimmed.startsWith("**")) {
-                glossEnded = true;
-            } else if (!glossEnded && trimmed.length > 0) {
-                glossLines.push(trimmed);
-            }
-        }
-        return { gloss: glossLines.join("\n"), ipa };
+        const gloss = card.fields
+            .filter(
+                (field) =>
+                    field.side === "back" &&
+                    (field.label === FIELD_GLOSS || field.label === ""),
+            )
+            .map((field) => field.value)
+            .join("\n");
+
+        const ipa =
+            card.fields.find(
+                (field) => field.side === "back" && field.label === FIELD_IPA,
+            )?.value ?? "";
+
+        return { gloss, ipa };
     }
 
     private async renderSpellingCard(card: ReviewCard): Promise<void> {

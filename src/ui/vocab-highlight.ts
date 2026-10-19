@@ -5,7 +5,7 @@ import type HandyLearnPlugin from "src/main";
 const WORD_PATTERN = /[A-Za-z][A-Za-z'’-]*/g;
 
 /** 这些容器里的文字不参与高亮。 */
-const SKIP_SELECTOR = "code, pre, a, .hl-known-word";
+const SKIP_SELECTOR = "code, pre, a, .hl-known-word, .hl-transient-word";
 
 /** 单次渲染处理的文本节点上限，避免超长文档卡顿。 */
 const MAX_TEXT_NODES = 2000;
@@ -17,8 +17,17 @@ const MAX_TEXT_NODES = 2000;
 export class VocabHighlighter {
     private knownWords = new Set<string>();
     private needsReload = true;
+    /** 跳转定位时要临时高亮的目标词。 */
+    private transientWord: string | null = null;
+    private scrollPending = false;
 
     constructor(private plugin: HandyLearnPlugin) {}
+
+    /** 设置要临时高亮并滚动定位的词。 */
+    setTransient(word: string): void {
+        this.transientWord = word.toLowerCase();
+        this.scrollPending = true;
+    }
 
     register(): void {
         this.plugin.registerMarkdownPostProcessor((el, ctx) => {
@@ -77,6 +86,8 @@ export class VocabHighlighter {
 
         for (const textNode of textNodes) this.markTextNode(textNode);
 
+        if (this.scrollPending) this.scrollToTransient(el);
+
         if (!el.hasClass("hl-highlight-bound")) {
             el.addClass("hl-highlight-bound");
             el.addEventListener("click", (event) => this.handleClick(event));
@@ -94,7 +105,11 @@ export class VocabHighlighter {
         let match: RegExpExecArray | null;
 
         while ((match = WORD_PATTERN.exec(text)) !== null) {
-            if (!this.knownWords.has(match[0].toLowerCase())) continue;
+            const word = match[0].toLowerCase();
+            const base = this.plugin.dictionary.lemma(word);
+            const transient = word === this.transientWord;
+            const known = this.knownWords.has(base) && !this.plugin.matureWords.has(base);
+            if (!transient && !known) continue;
 
             matched = true;
             if (match.index > lastIndex) {
@@ -102,7 +117,7 @@ export class VocabHighlighter {
             }
 
             const span = document.createElement("span");
-            span.className = "hl-known-word";
+            span.className = transient ? "hl-transient-word" : "hl-known-word";
             span.textContent = match[0];
             fragment.appendChild(span);
 
@@ -117,9 +132,21 @@ export class VocabHighlighter {
         node.parentNode?.replaceChild(fragment, node);
     }
 
+    /** 定位到临时高亮词并滚动到它（只滚一次）。 */
+    private scrollToTransient(el: HTMLElement): void {
+        const target = el.querySelector(".hl-transient-word");
+        if (target === null) return;
+        this.scrollPending = false;
+        setTimeout(() => target.scrollIntoView({ block: "center", behavior: "smooth" }), 0);
+    }
+
     private handleClick(event: MouseEvent): void {
         const target = event.target as HTMLElement | null;
-        if (target === null || !target.hasClass("hl-known-word")) return;
+        if (
+            target === null ||
+            !(target.hasClass("hl-known-word") || target.hasClass("hl-transient-word"))
+        )
+            return;
 
         event.preventDefault();
         const word = target.textContent ?? "";

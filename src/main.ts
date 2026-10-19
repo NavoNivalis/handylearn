@@ -1,7 +1,9 @@
-import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { normalizePath, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 
+import { MATURE_INTERVAL_DAYS } from "src/engine/card";
+import { parseSchedules } from "src/engine/parser";
 import { Ecdict } from "src/dictionary/ecdict";
-import { DEFAULT_SETTINGS, HandyLearnSettings } from "src/settings";
+import { DEFAULT_SETTINGS, HandyLearnSettings, normalizeFieldTemplates } from "src/settings";
 import { BatchVocabModal } from "src/ui/modals/batch-vocab-modal";
 import { CreateVocabCardModal } from "src/ui/modals/create-vocab-card-modal";
 import { ExtractWordsModal } from "src/ui/modals/extract-words-modal";
@@ -13,6 +15,9 @@ import { WordContextMenu } from "src/ui/word-context-menu";
 export default class HandyLearnPlugin extends Plugin {
     settings: HandyLearnSettings = { ...DEFAULT_SETTINGS };
     dictionary = new Ecdict();
+    /** 已记熟的词（认词间隔 >= 21 天），阅读模式不高亮。 */
+    matureWords = new Set<string>();
+    private highlighter = new VocabHighlighter(this);
 
     async onload(): Promise<void> {
         await this.loadSettings();
@@ -48,12 +53,14 @@ export default class HandyLearnPlugin extends Plugin {
             callback: () => new BatchVocabModal(this.app, this).open(),
         });
 
-        new VocabHighlighter(this).register();
+        this.highlighter.register();
         new WordContextMenu(this).register();
+        await this.refreshMatureWords();
     }
 
     async loadSettings(): Promise<void> {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings.fieldTemplates = normalizeFieldTemplates(this.settings.fieldTemplates);
     }
 
     async saveSettings(): Promise<void> {
@@ -87,11 +94,32 @@ export default class HandyLearnPlugin extends Plugin {
 
     /** 词库变化后刷新右侧栏。 */
     async refreshSidebar(): Promise<void> {
+        await this.refreshMatureWords();
         for (const leaf of this.app.workspace.getLeavesOfType(REVIEW_VIEW_TYPE)) {
             if (leaf.view instanceof ReviewSidebarView) {
                 await leaf.view.refresh();
             }
         }
+    }
+
+    /** 重新计算「已记熟」的词（认词卡间隔 >= 21 天）。 */
+    async refreshMatureWords(): Promise<void> {
+        const folder = normalizePath(this.settings.vocabOutputFolder);
+        const mature = new Set<string>();
+        for (const file of this.app.vault.getMarkdownFiles()) {
+            if (file.parent?.path !== folder) continue;
+            if (file.basename.startsWith("_")) continue;
+            const text = await this.app.vault.cachedRead(file);
+            const interval = parseSchedules(text)[0]?.interval ?? 1;
+            if (interval >= MATURE_INTERVAL_DAYS) mature.add(file.basename.toLowerCase());
+        }
+        this.matureWords = mature;
+    }
+
+    /** 打开出处笔记并临时高亮定位某个词。 */
+    async locateWord(word: string, linktext: string, sourcePath: string): Promise<void> {
+        this.highlighter.setTransient(word);
+        await this.app.workspace.openLinkText(linktext, sourcePath);
     }
 
     async extractFromActiveNote(): Promise<void> {

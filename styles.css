@@ -1,12 +1,22 @@
-/* 阅读模式高亮已建卡单词 */
+/* 阅读模式高亮未记熟的单词 */
 .hl-known-word {
-    border-bottom: 1px dashed var(--text-accent);
+    background: var(--text-highlight-bg);
+    border-radius: 3px;
+    padding: 0 2px;
     cursor: pointer;
 }
 
 .hl-known-word:hover {
-    background: var(--text-accent);
-    color: var(--text-on-accent);
+    text-decoration: underline;
+}
+
+/* 跳转定位时的临时高亮（醒目） */
+.hl-transient-word {
+    background: var(--text-highlight-bg);
+    border-radius: 3px;
+    padding: 0 2px;
+    box-shadow: 0 0 0 2px var(--text-accent);
+    cursor: pointer;
 }
 
 /* 右侧栏主页 */
@@ -193,14 +203,20 @@
     margin: 8px 0;
 }
 
-/* 建卡弹窗预览 */
+/* 建卡弹窗预览（可编辑） */
 .hl-vocab-preview {
+    width: 100%;
+    box-sizing: border-box;
     max-height: 300px;
     overflow-y: auto;
     font-size: var(--font-ui-small);
+    font-family: var(--font-text);
+    color: var(--text-normal);
     background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     padding: 8px;
+    resize: vertical;
     white-space: pre-wrap;
 }
 
@@ -274,4 +290,63 @@
     color: var(--text-faint);
     font-size: var(--font-ui-small);
     white-space: nowrap;
+}
+
+.hl-extract-ignore {
+    font-size: var(--font-ui-smaller);
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
+/* 字段编辑器（词卡编辑弹窗 + 设置里的字段模板） */
+.hl-field-list,
+.hl-template-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.hl-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.hl-field-label {
+    flex: 0 0 90px;
+    width: 90px;
+    align-self: center;
+    padding: 4px 6px;
+    box-sizing: border-box;
+}
+
+.hl-field-value {
+    flex: 1;
+    min-width: 120px;
+    padding: 4px 6px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.hl-field-side {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
+.hl-field-actions {
+    display: flex;
+    gap: 2px;
+    align-self: center;
+}
+
+.hl-field-actions button {
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
+.hl-template-desc {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin-bottom: 12px;
 }

@@ -1,4 +1,11 @@
-import { CardSchedule, ReviewCard, WordClass } from "src/engine/card";
+import {
+    CardField,
+    CardSchedule,
+    FieldSide,
+    ReviewCard,
+    WordClass,
+    FIELD_GLOSS,
+} from "src/engine/card";
 
 /** 从未复习过的占位到期日。 */
 export const NEW_CARD_DUE = "2000-01-01";
@@ -8,6 +15,9 @@ const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
 
 /** 匹配调度注释 <!--SR:!...-->。 */
 const SR_COMMENT_RE = /<!--SR:!([\s\S]*?)-->/;
+
+/** 匹配一个字段行：**字段名：** 内容。 */
+const FIELD_RE = /^\*\*(.+?)[：:]\*\*\s*([\s\S]*)$/;
 
 /** 把一段 "日期,间隔,难度" 解析成调度数据。 */
 function parseScheduleEntry(entry: string): CardSchedule {
@@ -54,14 +64,58 @@ export function updateNoteSchedules(text: string, schedules: CardSchedule[]): st
 }
 
 /**
+ * 把一面的若干行解析成字段。
+ *
+ * - `**字段名：** 内容` → 一个具名字段；
+ * - 该面最前面的普通行 → 归为一个无名/释义字段（正面是单词，背面是释义）；
+ * - 其余普通行 → 作为上一个字段的续行。
+ */
+export function parseFieldsFromLines(lines: string[], side: FieldSide): CardField[] {
+    const fields: CardField[] = [];
+    const leading: string[] = [];
+
+    for (const raw of lines) {
+        const line = raw.trim();
+        if (line === "") continue;
+
+        const match = FIELD_RE.exec(line);
+        if (match !== null) {
+            fields.push({ label: match[1].trim(), value: match[2].trim(), side });
+        } else if (fields.length === 0) {
+            leading.push(line);
+        } else {
+            fields[fields.length - 1].value += `\n${line}`;
+        }
+    }
+
+    if (leading.length > 0) {
+        fields.unshift({
+            label: side === "front" ? "" : FIELD_GLOSS,
+            value: leading.join("\n"),
+            side,
+        });
+    }
+
+    return fields;
+}
+
+/** 字段 → Markdown 文本；skipEmpty 时跳过内容为空的字段。 */
+export function renderFields(fields: CardField[], skipEmpty = false): string {
+    return fields
+        .filter((field) => !skipEmpty || field.value.trim().length > 0)
+        .map((field) => (field.label === "" ? field.value : `**${field.label}：** ${field.value}`))
+        .join("\n");
+}
+
+/**
  * 从一篇词卡笔记的完整正文解析出复习卡片。
  *
  * 词卡笔记格式（由建卡逻辑生成）：
  *   frontmatter（word / class 等）
  *   #flashcards（或 #flashcards/technical）
- *   {单词}
+ *   {正面字段}
  *   ??
- *   {释义、例句等}
+ *   {背面字段}
  *   <!--SR:!...-->（可选，复习后才写入）
  */
 export function parseVocabNote(text: string, notePath = ""): ReviewCard[] {
@@ -82,14 +136,36 @@ export function parseVocabNote(text: string, notePath = ""): ReviewCard[] {
     const sepIndex = cleanLines.findIndex((line) => line.trim() === "??");
     if (sepIndex === -1) return [];
 
-    const front = cleanLines.slice(0, sepIndex).join("\n").trim();
-    const back = cleanLines.slice(sepIndex + 1).join("\n").trim();
+    const frontFields = parseFieldsFromLines(cleanLines.slice(0, sepIndex), "front");
+    const backFields = parseFieldsFromLines(cleanLines.slice(sepIndex + 1), "back");
+    const fields = [...frontFields, ...backFields];
+
+    const front = renderFields(frontFields, true);
+    const back = renderFields(backFields, true);
 
     const wordMatch = /^word:\s*(.+)$/m.exec(text);
     const word = wordMatch?.[1]?.trim() || front;
 
     return [
-        { word, kind: "recognition", wordClass, front, back, schedule: recognition, notePath },
-        { word, kind: "spelling", wordClass, front: back, back: front, schedule: spelling, notePath },
+        {
+            word,
+            kind: "recognition",
+            wordClass,
+            front,
+            back,
+            fields,
+            schedule: recognition,
+            notePath,
+        },
+        {
+            word,
+            kind: "spelling",
+            wordClass,
+            front: back,
+            back: front,
+            fields,
+            schedule: spelling,
+            notePath,
+        },
     ];
 }

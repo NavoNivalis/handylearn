@@ -9,6 +9,7 @@ import {
     extractWords,
     groupOrder,
 } from "src/dictionary/vocab-extract";
+import { addSimpleWord, loadSimpleWords } from "src/dictionary/simple-words";
 import { createVocabNote } from "src/dictionary/vocab-vault";
 import type HandyLearnPlugin from "src/main";
 
@@ -52,6 +53,7 @@ export class ExtractWordsModal extends Modal {
     private words: ExtractedWord[] = [];
     private selected = new Set<string>();
     private knownWords = new Set<string>();
+    private simpleWords = new Set<string>();
     private initialized = false;
     private running = false;
 
@@ -66,10 +68,11 @@ export class ExtractWordsModal extends Modal {
         this.source = sourceFile === null ? null : `[[${sourceFile.basename}]]`;
     }
 
-    onOpen(): void {
+    async onOpen(): Promise<void> {
         this.setTitle("提取生词");
 
         this.knownWords = existingVocabWords(this.app, this.plugin.settings.vocabOutputFolder);
+        this.simpleWords = await loadSimpleWords(this.app, this.plugin.settings.vocabOutputFolder);
 
         this.topEl = this.contentEl.createDiv("hl-extract-topbar");
         this.listEl = this.contentEl.createDiv("hl-extract-list");
@@ -83,6 +86,8 @@ export class ExtractWordsModal extends Modal {
                 button.onClick(() => void this.run());
             })
             .addButton((button) => button.setButtonText("取消").onClick(() => this.close()));
+
+        this.refreshAction();
     }
 
     onClose(): void {
@@ -94,7 +99,7 @@ export class ExtractWordsModal extends Modal {
             this.text,
             this.plugin.dictionary,
             this.knownWords,
-            new Set<string>(),
+            this.simpleWords,
             this.mode,
         );
 
@@ -186,6 +191,21 @@ export class ExtractWordsModal extends Modal {
                     text: (item.entry.t ?? "").split("\n")[0].trim(),
                 });
                 row.createSpan({ cls: "hl-extract-times", text: `×${item.count}` });
+
+                const ignoreBtn = row.createEl("button", {
+                    text: "忽略",
+                    cls: "hl-extract-ignore",
+                });
+                ignoreBtn.addEventListener("click", () => {
+                    void addSimpleWord(
+                        this.app,
+                        this.plugin.settings.vocabOutputFolder,
+                        item.word,
+                    );
+                    this.simpleWords.add(item.word.toLowerCase());
+                    this.selected.delete(item.word);
+                    this.refresh();
+                });
             }
         }
 
@@ -214,6 +234,7 @@ export class ExtractWordsModal extends Modal {
                 targets[i].entry,
                 null,
                 this.source,
+                this.plugin.settings.fieldTemplates,
             );
         }
 

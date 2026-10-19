@@ -14,7 +14,7 @@ export class CreateVocabCardModal extends Modal {
     private initialWord: string;
 
     private wordInput: HTMLInputElement | null = null;
-    private previewEl: HTMLElement | null = null;
+    private previewEl: HTMLTextAreaElement | null = null;
     private saveButton: HTMLButtonElement | null = null;
     private exampleButton: HTMLButtonElement | null = null;
 
@@ -22,11 +22,19 @@ export class CreateVocabCardModal extends Modal {
     private word = "";
     private example: GeneratedExample | null = null;
     private generating = false;
+    /** 建卡时的出处（[[笔记名]] 或 null）。右键建卡会传入当前笔记。 */
+    private source: string | null = null;
 
-    constructor(app: App, plugin: HandyLearnPlugin, initialWord = "") {
+    constructor(
+        app: App,
+        plugin: HandyLearnPlugin,
+        initialWord = "",
+        source: string | null = null,
+    ) {
         super(app);
         this.plugin = plugin;
         this.initialWord = initialWord;
+        this.source = source;
     }
 
     onOpen(): void {
@@ -38,7 +46,9 @@ export class CreateVocabCardModal extends Modal {
             text.inputEl.addEventListener("input", () => this.refreshPreview());
         });
 
-        this.previewEl = this.contentEl.createEl("pre", { cls: "hl-vocab-preview" });
+        this.previewEl = this.contentEl.createEl("textarea", { cls: "hl-vocab-preview" });
+        this.previewEl.rows = 16;
+        this.previewEl.spellcheck = false;
 
         new Setting(this.contentEl).addButton((button) => {
             button.setButtonText("AI 生成例句");
@@ -67,7 +77,7 @@ export class CreateVocabCardModal extends Modal {
     }
 
     private refreshPreview(): void {
-        const word = (this.wordInput?.value ?? "").trim();
+        const word = this.plugin.dictionary.lemma((this.wordInput?.value ?? "").trim());
 
         // 换了单词，之前生成的例句作废
         if (word.toLowerCase() !== this.word.toLowerCase()) {
@@ -82,15 +92,23 @@ export class CreateVocabCardModal extends Modal {
     private renderPreview(): void {
         if (this.previewEl === null) return;
 
-        if (this.word.length === 0) {
-            this.previewEl.setText("");
-        } else if (this.entry === null) {
-            this.previewEl.setText("词典里没有这个词");
-        } else {
-            this.previewEl.setText(buildVocabNote(this.word, this.entry, this.example));
-        }
+        const entry = this.entry;
+        const ready = entry !== null;
 
-        const ready = this.entry !== null;
+        if (entry !== null) {
+            this.previewEl.value = buildVocabNote(
+                this.word,
+                entry,
+                this.example,
+                this.source,
+                this.plugin.settings.fieldTemplates,
+            );
+            this.previewEl.placeholder = "";
+        } else {
+            this.previewEl.value = "";
+            this.previewEl.placeholder = this.word.length === 0 ? "" : "词典里没有这个词";
+        }
+        this.previewEl.disabled = !ready;
 
         if (this.saveButton !== null) {
             this.saveButton.toggleClass("mod-cta", ready);
@@ -129,12 +147,18 @@ export class CreateVocabCardModal extends Modal {
     private async createCard(): Promise<void> {
         if (this.entry === null || this.word.length === 0) return;
 
+        // 预览可以直接编辑（比如填自定义字段），保存时以编辑后的内容为准
+        const content = (this.previewEl?.value ?? "").trim();
+
         const created = await createVocabNote(
             this.app,
             this.plugin.settings.vocabOutputFolder,
             this.word,
             this.entry,
             this.example,
+            this.source,
+            this.plugin.settings.fieldTemplates,
+            content.length > 0 ? `${content}\n` : undefined,
         );
 
         new Notice(created ? "词卡已创建" : "词卡已存在");

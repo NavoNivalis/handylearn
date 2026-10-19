@@ -24,6 +24,8 @@ export interface DictEntry {
 export class Ecdict {
     private map: Map<string, DictEntry> | null = null;
     private tagCache = new Map<string, string[]>();
+    /** 变体 → 词根 反向索引（由 ex 字段构建，词频优先消歧）。 */
+    private variantToBase = new Map<string, string>();
 
     /** 从插件目录加载词典数据。 */
     async load(app: App, pluginId: string): Promise<void> {
@@ -41,16 +43,64 @@ export class Ecdict {
         }
 
         this.map = new Map(Object.entries(data));
+        this.buildVariantIndex();
     }
 
     isLoaded(): boolean {
         return this.map !== null;
     }
 
-    /** 精确查一个词；查不到返回 null。 */
+    /** 查一个词；精确查不到时会尝试词形还原（变体 → 词根）再查。 */
     query(word: string): DictEntry | null {
         if (this.map === null) return null;
-        return this.map.get(word.trim().toLowerCase()) ?? null;
+        const lower = word.trim().toLowerCase();
+        const exact = this.map.get(lower);
+        if (exact !== undefined) return exact;
+        const base = this.variantToBase.get(lower);
+        return base === undefined ? null : this.map.get(base) ?? null;
+    }
+
+    /** 词形还原：把变体（复数/进行时/过去式等）还原成词根；本身是词根或查不到就原样返回（小写）。 */
+    lemma(word: string): string {
+        const lower = word.trim().toLowerCase();
+        if (lower === "" || this.map === null) return lower;
+        if (this.map.has(lower)) return lower;
+        return this.variantToBase.get(lower) ?? lower;
+    }
+
+    /** 从词典 ex 字段构建「变体 → 词根」反向索引；一个变体对应多个词根时按词频取更常见的。 */
+    private buildVariantIndex(): void {
+        this.variantToBase.clear();
+        if (this.map === null) return;
+
+        const handledTypes = new Set(["p", "d", "i", "3", "r", "t", "s"]);
+
+        for (const [word, entry] of this.map) {
+            const ex = entry.ex;
+            if (!ex) continue;
+            const base = word.toLowerCase();
+
+            for (const part of ex.split("/")) {
+                const colon = part.indexOf(":");
+                if (colon === -1) continue;
+                const type = part.slice(0, colon).trim();
+                if (!handledTypes.has(type)) continue;
+                const form = part.slice(colon + 1).trim().toLowerCase();
+                if (form === "" || form === base) continue;
+
+                const existing = this.variantToBase.get(form);
+                if (existing === undefined || this.frequency(base) < this.frequency(existing)) {
+                    this.variantToBase.set(form, base);
+                }
+            }
+        }
+    }
+
+    /** 词频排名，越小越常见；没有词频视为最大（最不常见）。 */
+    private frequency(word: string): number {
+        const raw = this.map?.get(word)?.frq;
+        const frq = Number.parseInt(raw ?? "", 10);
+        return Number.isFinite(frq) && frq > 0 ? frq : Number.MAX_SAFE_INTEGER;
     }
 
     /** 模糊搜索，支持英文和中文。英文前缀优先，再子串；中文匹配释义。按词频排序。 */

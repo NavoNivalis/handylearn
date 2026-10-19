@@ -107,7 +107,15 @@ export class BatchVocabModal extends Modal {
                 }
             }
 
-            const ok = await createVocabNote(this.app, folder, word, entry, example);
+            const ok = await createVocabNote(
+                this.app,
+                folder,
+                word,
+                entry,
+                example,
+                null,
+                settings.fieldTemplates,
+            );
             if (ok) created++;
             else skipped++;
         }

@@ -1,3 +1,17 @@
+import {
+    CardField,
+    FieldTemplate,
+    FIELD_EXAM,
+    FIELD_EXAMPLE,
+    FIELD_FORMS,
+    FIELD_FREQUENCY,
+    FIELD_GLOSS,
+    FIELD_IPA,
+    FIELD_SOURCE,
+    FIELD_TRANSLATION,
+} from "src/engine/card";
+import { renderFields } from "src/engine/parser";
+import { DEFAULT_FIELD_TEMPLATES } from "src/settings";
 import { DictEntry } from "src/dictionary/ecdict";
 import { GeneratedExample } from "src/dictionary/vocab-ai";
 
@@ -96,44 +110,65 @@ export function parseExample(noteContent: string): { sentence: string; translati
 }
 
 /**
+ * 一个内置字段对应的内容。自定义字段没有自动内容，返回空串。
+ */
+function fieldValue(
+    label: string,
+    entry: DictEntry,
+    example: GeneratedExample | null,
+    source: string | null,
+): string {
+    switch (label) {
+        case FIELD_GLOSS:
+            return translationLines(entry).join("\n");
+        case FIELD_IPA:
+            return entry.ipa ?? "";
+        case FIELD_EXAMPLE:
+            return example?.sentence ?? "";
+        case FIELD_TRANSLATION:
+            return example?.translation ?? "";
+        case FIELD_FORMS:
+            return formatExchange(entry.ex);
+        case FIELD_EXAM:
+            return formatTags(entry.tag);
+        case FIELD_FREQUENCY: {
+            const parts: string[] = [];
+            if (entry.frq) parts.push(`当代 ${entry.frq}`);
+            if (entry.bnc) parts.push(`BNC ${entry.bnc}`);
+            return parts.join(" / ");
+        }
+        case FIELD_SOURCE:
+            return source ?? "";
+        default:
+            return "";
+    }
+}
+
+/**
  * 生成一个单词的词卡笔记 markdown。
  *
- * 格式：frontmatter（word/class/source） + #flashcards + {单词} ?? {释义+例句+音标+词形+考试+词频+出处}。
- * 注意：多行卡片的背面行之间不能有空行，否则解析会提前结束。
+ * 格式：frontmatter（word/class/source） + #flashcards + 正面字段 + `??` + 背面字段。
+ * 字段顺序与所属面由模板决定；模板里的自定义字段会留空，等用户填写。
+ * 注意：多行字段的续行之间不能有空行，否则解析会提前结束。
  */
 export function buildVocabNote(
     word: string,
     entry: DictEntry,
     example?: GeneratedExample | null,
     source?: string | null,
+    templates: FieldTemplate[] = DEFAULT_FIELD_TEMPLATES,
 ): string {
-    const translation = (entry.t ?? "")
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .join("\n");
+    const fields: CardField[] = [
+        { label: "", value: word, side: "front" },
+        ...templates.map((template) => ({
+            label: template.label,
+            value: fieldValue(template.label, entry, example ?? null, source ?? null),
+            side: template.side,
+        })),
+    ];
 
-    const backLines: string[] = [translation];
-
-    if (example?.sentence) {
-        backLines.push(`**例句：** ${example.sentence}`);
-        if (example.translation) backLines.push(`**翻译：** ${example.translation}`);
-    }
-
-    if (entry.ipa) backLines.push(`**音标：** ${entry.ipa}`);
-
-    const exchange = formatExchange(entry.ex);
-    if (exchange) backLines.push(`**词形：** ${exchange}`);
-
-    const tags = formatTags(entry.tag);
-    if (tags) backLines.push(`**考试：** ${tags}`);
-
-    const frqParts: string[] = [];
-    if (entry.frq) frqParts.push(`当代 ${entry.frq}`);
-    if (entry.bnc) frqParts.push(`BNC ${entry.bnc}`);
-    if (frqParts.length > 0) backLines.push(`**词频：** ${frqParts.join(" / ")}`);
-
-    if (source) backLines.push(SOURCE_LINE_PREFIX + source);
+    const front = renderFields(fields.filter((field) => field.side === "front"));
+    const back = renderFields(fields.filter((field) => field.side === "back"));
 
     const wordClass = classifyWord(entry);
     const flashcardTag =
@@ -151,5 +186,5 @@ export function buildVocabNote(
         .filter(Boolean)
         .join("\n");
 
-    return `${frontmatter}\n\n${flashcardTag}\n\n${word}\n??\n${backLines.join("\n")}\n`;
+    return `${frontmatter}\n\n${flashcardTag}\n\n${front}\n??\n${back}\n`;
 }

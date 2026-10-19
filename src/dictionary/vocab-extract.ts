@@ -140,6 +140,8 @@ export function existingVocabWords(app: App, folder: string): Set<string> {
 
     for (const file of app.vault.getMarkdownFiles()) {
         if (file.parent?.path !== target) continue;
+        // 跳过 `_` 开头的特殊文件（如简单词列表 _simple.md），它们不是词卡。
+        if (file.basename.startsWith("_")) continue;
         words.add(file.basename.toLowerCase());
     }
     return words;

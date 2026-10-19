@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 
+import { renderTemplateEditor } from "src/ui/field-template-editor";
 import HandyLearnPlugin from "src/main";
 
 export class HandyLearnSettingTab extends PluginSettingTab {
@@ -73,5 +74,22 @@ export class HandyLearnSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
+
+        this.renderFieldTemplates(containerEl);
+    }
+
+    /** 字段模板编辑器：新建词卡时按这里的字段和顺序生成。 */
+    private renderFieldTemplates(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setName("词卡字段模板")
+            .setDesc(
+                "新建词卡时自动带上这些字段，自定义字段留空等你填写。「释义」「音标」锁定，拼写卡依赖它们。",
+            );
+
+        const list = containerEl.createDiv({ cls: "hl-template-list" });
+        renderTemplateEditor(list, this.plugin.settings.fieldTemplates, (next) => {
+            this.plugin.settings.fieldTemplates = next;
+            void this.plugin.saveSettings().then(() => this.display());
+        });
     }
 }

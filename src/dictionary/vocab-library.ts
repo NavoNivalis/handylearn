@@ -18,6 +18,8 @@ export function collectVocabRecords(app: App, folder: string, dict: Ecdict): Voc
 
     for (const file of app.vault.getMarkdownFiles()) {
         if (file.parent?.path !== target) continue;
+        // 跳过 `_` 开头的特殊文件（如简单词列表 _simple.md），它们不是词卡。
+        if (file.basename.startsWith("_")) continue;
 
         const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
         const word =

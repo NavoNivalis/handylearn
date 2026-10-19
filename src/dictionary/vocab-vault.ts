@@ -1,8 +1,10 @@
-import { App, normalizePath, parseYaml, stringifyYaml } from "obsidian";
+import { App, normalizePath, parseYaml, stringifyYaml, TFile } from "obsidian";
 
+import { CardField, FieldTemplate, FIELD_SOURCE } from "src/engine/card";
+import { parseVocabNote, renderFields } from "src/engine/parser";
 import { DictEntry } from "src/dictionary/ecdict";
 import { GeneratedExample } from "src/dictionary/vocab-ai";
-import { buildVocabNote, SOURCE_LINE_PREFIX } from "src/dictionary/vocab-card";
+import { buildVocabNote } from "src/dictionary/vocab-card";
 
 /** 某个单词词卡笔记的路径。 */
 export function vocabNotePath(folder: string, word: string): string {
@@ -27,7 +29,35 @@ function readSources(value: unknown): string[] {
 }
 
 /**
- * 把新出处追加到已有词卡上（frontmatter 的 source 数组 + 正文「出处」行）。
+ * 用字段重建整篇词卡笔记，保留 frontmatter、#flashcards 标签和 SR 调度注释。
+ */
+export function rebuildNote(text: string, fields: CardField[]): string {
+    const frontmatter = /^---\r?\n[\s\S]*?\r?\n---/.exec(text)?.[0] ?? "";
+    const tag = /^#flashcards[^\n]*$/m.exec(text)?.[0] ?? "#flashcards";
+    const sr = /<!--SR:![\s\S]*?-->/.exec(text)?.[0] ?? "";
+
+    const front = renderFields(fields.filter((field) => field.side === "front"));
+    const back = renderFields(fields.filter((field) => field.side === "back"));
+
+    const parts: string[] = [];
+    if (frontmatter.length > 0) parts.push(frontmatter);
+    parts.push(tag, `${front}\n??\n${back}`);
+
+    return `${parts.join("\n\n")}\n${sr ? `\n${sr}\n` : ""}`;
+}
+
+/** 覆盖一篇词卡的字段（保留 frontmatter / 标签 / 调度）。 */
+export async function updateNoteFields(
+    app: App,
+    file: TFile,
+    fields: CardField[],
+): Promise<void> {
+    const text = await app.vault.read(file);
+    await app.vault.modify(file, rebuildNote(text, fields));
+}
+
+/**
+ * 把新出处追加到已有词卡上（frontmatter 的 source 数组 + 正文「出处」字段）。
  * 记过同一个出处就什么都不做。返回是否发生改动。
  */
 async function appendSource(app: App, folder: string, word: string, source: string): Promise<boolean> {
@@ -54,10 +84,15 @@ async function appendSource(app: App, folder: string, word: string, source: stri
         `---\n${stringifyYaml(parsed).trimEnd()}\n---`,
     );
 
-    const sourceLine = `${SOURCE_LINE_PREFIX}${sources.join(" ")}`;
-    updated = updated.includes(SOURCE_LINE_PREFIX)
-        ? updated.replace(new RegExp(`^${SOURCE_LINE_PREFIX}.*$`, "m"), sourceLine)
-        : `${updated.trimEnd()}\n${sourceLine}\n`;
+    // 正文出处字段同步：有就更新，没有就补一个背面字段
+    const fields = parseVocabNote(updated)[0]?.fields;
+    if (fields !== undefined && fields.length > 0) {
+        const joined = sources.join(" ");
+        const existing = fields.find((field) => field.label === FIELD_SOURCE);
+        if (existing !== undefined) existing.value = joined;
+        else fields.push({ label: FIELD_SOURCE, value: joined, side: "back" });
+        updated = rebuildNote(updated, fields);
+    }
 
     await app.vault.modify(file, updated);
     return true;
@@ -74,6 +109,8 @@ export async function createVocabNote(
     entry: DictEntry,
     example?: GeneratedExample | null,
     source?: string | null,
+    templates?: FieldTemplate[],
+    content?: string,
 ): Promise<boolean> {
     if (await vocabNoteExists(app, folder, word)) {
         if (!source) return false;
@@ -83,7 +120,7 @@ export async function createVocabNote(
     await ensureVocabFolder(app, folder);
     await app.vault.create(
         vocabNotePath(folder, word),
-        buildVocabNote(word, entry, example, source),
+        content ?? buildVocabNote(word, entry, example, source, templates),
     );
     return true;
 }
